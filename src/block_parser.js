@@ -358,6 +358,7 @@ module.exports = function (args) {
   }
 
   var getNewMempoolTransaction = function (newMempoolTxids, cb) {
+    var count = 0
     var commandsArr = newMempoolTxids.map(function (txid) {
       return { method: 'getrawtransaction', params: [txid, 0]}
     })
@@ -365,10 +366,12 @@ module.exports = function (args) {
     litecoin.cmd(commandsArr, function (rawTransaction, cb1) {
       var newMempoolTransaction = decodeRawTransaction(bitcoinjs.Transaction.fromHex(rawTransaction))
       newMempoolTransactions.push(newMempoolTransaction)
-      cb()
-    },
-    function (err) {
-      cb(err, newMempoolTransactions)
+      cb1()
+    }, function (err, b) {
+      if (count == 0) {
+        cb(err, newMempoolTransactions)
+      }
+      count = count + 1
     })
   }
 
@@ -604,7 +607,7 @@ module.exports = function (args) {
         function(callback) {
           var txids = txsToCheck.map(function(tx) { return tx.vin.map(function(vin) { return vin.txid}) })
           txids = [].concat.apply([], txids)
-          txids = [...new Set(txids)]
+          txids = [new Set(txids)]
           txsToCheck = []
           getNewMempoolTxids(txids, function(err, txids) {
             if (err) return callback(err)
