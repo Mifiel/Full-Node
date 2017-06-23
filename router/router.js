@@ -1,21 +1,21 @@
 var routes = [
   {
     path: '/getAddressesUtxos',
-    method: 'post',
+    method: 'get',
     functionName: 'getAddressesUtxos',
     params: ['addresses'],
     optionalParams: ['numOfConfirmations']
   },
   {
     path: '/getUtxos',
-    method: 'post',
+    method: 'get',
     functionName: 'getUtxos',
     params: ['utxos'],
     optionalParams: ['numOfConfirmations']
   },
   {
     path: '/getAddressesTransactions',
-    method: 'post',
+    method: 'get',
     functionName: 'getAddressesTransactions',
     params: ['addresses'],
     optionalParams: []
@@ -52,17 +52,24 @@ module.exports = function (app, parser) {
 
   routes.forEach(function (route) {
     app[route.method](route.path, function (req, res, next) {
-      var args = {}
-      var err
+      var args = {},
+          err = {},
+          hasErrors = false
       route.params.some(function (param) {
-        args[param] = req.body[param]
+        args[param] = req.body[param] || req.query[param]
         if (!args[param]) {
-          err = param + ' is required.'
+          hasErrors = true
+          err[param] = {
+            type: 'required',
+            message: `param '${param}' is required.`
+          }
           return true
         }
       })
-      if (err) {
-        res.status(400)
+      if (hasErrors) {
+        res.status(403)
+        if (req.accepts('json')) return res.send({ errors: err })
+        return res.type('txt').send('Not found')
         return next(err)
       }
       route.optionalParams.forEach(function (param) {
