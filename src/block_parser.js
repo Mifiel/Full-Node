@@ -6,10 +6,10 @@ var bufferReverse = require('buffer-reverse')
 var _ = require('lodash')
 var toposort = require('toposort')
 var redisClient = require('redis')
-var bitcoinRpc = require('bitcoin-async')
+var litecoinRpc = require('node-litecoin')
 var events = require('events')
 
-var mainnetFirstColoredBlock = 364548
+var mainnetFirstColoredBlock = 1227000
 var testnetFirstColoredBlock = 462320
 
 var blockStates = {
@@ -39,7 +39,7 @@ module.exports = function (args) {
     path: args.litecoinPath || '/',
     timeout: args.litecoinTimeout || 30000
   }
-  var bitcoin = new bitcoinRpc.Client(bitcoinOptions)
+  var litecoin = new litecoinRpc.Client(litecoinOptions)
 
   var emitter = new events.EventEmitter()
 
@@ -50,8 +50,8 @@ module.exports = function (args) {
   var waitForLitecoind = function (cb) {
     if (!info.litecoindbusy) return cb()
     return setTimeout(function() {
-      console.log('Waiting for bitcoind...')
-      bitcoin.cmd('getinfo', [], function (err) {
+      console.log('Waiting for litecoind...')
+      litecoin.getInfo(function (err) {
         if (err) {
           info.error = {}
           if (err.code) {
@@ -82,14 +82,14 @@ module.exports = function (args) {
   }
 
   var getNextBlock = function (height, cb) {
-    bitcoin.cmd('getblockhash', [height], function (err, hash) {
+    litecoin.getBlockHash(height, function (err, hash) {
       if (err) {
         if (err.code && err.code === -8) {
           return cb(null, null)
         }
         return cb(err)
       }
-      bitcoin.cmd('getblock', [hash, false], function (err, rawBlock) {
+      litecoin.getBlock(hash, false, function (err, rawBlock) {
         if (err) return cb(err)
         var block = bitcoinjs.Block.fromHex(rawBlock)
         block.height = height
@@ -160,7 +160,7 @@ module.exports = function (args) {
     })
 
     var prevOutsBatch = prevTxs.map(function(vin) { return { 'method': 'getrawtransaction', 'params': [vin.txid] } })
-    bitcoin.cmd(prevOutsBatch, function (rawTransaction, cb) {
+    litecoin.cmd(prevOutsBatch, function (rawTransaction, cb) {
       var prevTx = decodeRawTransaction(bitcoinjs.Transaction.fromHex(rawTransaction))
       var txid = prevTx.id
       prevTxs.forEach(function(vin) {
@@ -300,7 +300,7 @@ module.exports = function (args) {
         var type = bitcoinjs.script.classifyOutput(txout.script)
         var addresses = []
         if (~['pubkeyhash', 'scripthash'].indexOf(type)) {
-          addresses.push(bitcoinjs.address.fromOutputScript(bitcoinjs.script.decompile(txout.script), bitcoinNetwork))
+          addresses.push(bitcoinjs.address.fromOutputScript(bitcoinjs.script.decompile(txout.script), litecoinNetwork))
         }
         var answer = {'value' : value, 'n': i, 'scriptPubKey': {'asm': asm, 'hex': hex, 'addresses': addresses, 'type': type}}
 
@@ -344,7 +344,7 @@ module.exports = function (args) {
   }
 
   var getMempoolTxids = function (cb) {
-    bitcoin.cmd('getrawmempool', [], cb)
+    litecoin.getRawMemPool(cb)
   }
 
   var getNewMempoolTxids = function (mempoolTxids, cb) {
@@ -362,7 +362,7 @@ module.exports = function (args) {
       return { method: 'getrawtransaction', params: [txid, 0]}
     })
     var newMempoolTransactions = []
-    bitcoin.cmd(commandsArr, function (rawTransaction, cb) {
+    litecoin.cmd(commandsArr, function (rawTransaction, cb1) {
       var newMempoolTransaction = decodeRawTransaction(bitcoinjs.Transaction.fromHex(rawTransaction))
       newMempoolTransactions.push(newMempoolTransaction)
       cb()
@@ -474,15 +474,15 @@ module.exports = function (args) {
             params: [address, label, false]
           }
         })
-        bitcoin.cmd(commandsArr, function (ans, cb) { return process.nextTick(cb)}, cb)
+        litecoin.cmd(commandsArr, function (ans, cb) { return process.nextTick(cb)}, cb)
       },
       function (cb) {
         reindex = false
         if (!newAddresses.length) return process.nextTick(cb)
         reindex = true
-        info.bitcoindbusy = true
-        bitcoin.cmd('importaddress', [newAddresses[0], label, true], function (err) {
-          waitForBitcoind(cb)
+        info.litecoindbusy = true
+        litecoin.importAddress([newAddresses[0], label, true], function (err) {
+          waitForLitecoind(cb)
         })
         endFunc()
       },
@@ -535,11 +535,11 @@ module.exports = function (args) {
   }
 
   var getAddressesUtxos = function (args, cb) {
-    var addresses = args.addresses
+    var addresses = args.addresses.split(',')
     var numOfConfirmations = args.numOfConfirmations || 0
-    bitcoin.cmd('getblockcount', [], function(err, count) {
+    litecoin.getBlockCount(function(err, count) {
       if (err) return cb(err)
-      bitcoin.cmd('listunspent', [numOfConfirmations, 99999999, addresses], function (err, utxos) {
+      litecoin.listUnspent(numOfConfirmations, 99999999, addresses, function (err, utxos) {
         if (err) return cb(err)
         async.each(utxos, function (utxo, cb) {
           redis.hget('utxos', utxo.txid + ':' + utxo.vout, function (err, assets) {
@@ -563,9 +563,9 @@ module.exports = function (args) {
   var getUtxos = function (args, cb) {
     var reqUtxos = args.utxos
     var numOfConfirmations = args.numOfConfirmations || 0
-    bitcoin.cmd('getblockcount', [], function(err, count) {
+    litecoin.getBlockCount([], function(err, count) {
       if (err) return cb(err)
-      bitcoin.cmd('listunspent', [numOfConfirmations, 99999999], function (err, utxos) {
+      litecoin.listUnspent([numOfConfirmations, 99999999], function (err, utxos) {
         if (err) return cb(err)
         utxos = utxos.filter(utxo => reqUtxos.findIndex(reqUtxo => reqUtxo.txid === utxo.txid && reqUtxo.index === utxo.vout) !== -1)
         async.each(utxos, function (utxo, cb) {
@@ -589,7 +589,7 @@ module.exports = function (args) {
 
   var transmit = function (args, cb) {
     var txHex = args.txHex
-    bitcoin.cmd('sendrawtransaction', [txHex], function(err, res) {
+    litecoin.sendRawTransaction([txHex], function(err, res) {
       if (err) {
         return cb(err)
       }
@@ -610,7 +610,7 @@ module.exports = function (args) {
             if (err) return callback(err)
             if (txids.length == 0) return callback()
             var batch = txids.map(function(txid) { return { 'method': 'getrawtransaction', 'params': [txid] } })
-            bitcoin.cmd(
+            litecoin.cmd(
               batch,
               function (rawTransaction, cb) {
                 var tx = decodeRawTransaction(bitcoinjs.Transaction.fromHex(rawTransaction))
@@ -684,7 +684,7 @@ module.exports = function (args) {
     var transactions = {}
 
     async.whilst(function () { return next }, function (cb) {
-      bitcoin.cmd('listtransactions', [label, count, skip, true], function (err, transactions) {
+      litecoin.listTransactions([label, count, skip, true], function (err, transactions) {
         if (err) return cb(err)
         skip+=count
         transactions.forEach(function (transaction) {
@@ -701,9 +701,9 @@ module.exports = function (args) {
     }, function (err) {
       if (err) return cb(err)
       var batch = txids.map(function(txid) { return { 'method': 'getrawtransaction', 'params': [txid] } })
-      bitcoin.cmd('getblockcount', [], function(err, count) {
+      litecoin.getblockcount([], function(err, count) {
         if (err) return cb(err)
-        bitcoin.cmd(batch, function (rawTransaction, cb) {
+        litecoin.cmd(batch, function (rawTransaction, cb) {
           var transaction = decodeRawTransaction(bitcoinjs.Transaction.fromHex(rawTransaction))
           var tx = txs[transaction.txid]
           addColoredIOs(transaction, function(err) {
@@ -731,7 +731,7 @@ module.exports = function (args) {
           })
 
           var prevOutsBatch = Object.keys(prevOutputIndex).map(function(txid) { return { 'method': 'getrawtransaction', 'params': [txid] } })
-          bitcoin.cmd(prevOutsBatch, function (rawTransaction, cb) {
+          litecoin.cmd(prevOutsBatch, function (rawTransaction, cb) {
             var transaction = decodeRawTransaction(bitcoinjs.Transaction.fromHex(rawTransaction))
             var txid = transaction.id
             prevOutputIndex[transaction.txid].forEach(function(vin) {
@@ -755,23 +755,23 @@ module.exports = function (args) {
     })
   }
 
-  var getBitcoindInfo = function (cb) {
+  var getLitecoindInfo = function (cb) {
     var btcInfo
     async.waterfall([
       function (cb) {
-        bitcoin.cmd('getinfo', [], cb)
+        litecoin.getInfo(cb)
       },
       function (_btcInfo, cb) {
         if (typeof _btcInfo === 'function') {
           cb = _btcInfo
           _btcInfo = null
         }
-        if (!_btcInfo) return cb('No reply from getinfo')
+        if (!_btcInfo) return cb('No reply from getInfo')
         btcInfo = _btcInfo
-        bitcoin.cmd('getblockhash', [btcInfo.blocks], cb)
+        litecoin.getBlockHash(btcInfo.blocks, cb)
       },
       function (lastBlockHash, cb) {
-        bitcoin.cmd('getblock', [lastBlockHash], cb)
+        litecoin.getBlock(lastBlockHash, cb)
       }
     ],
     function (err, lastBlockInfo) {
@@ -796,8 +796,8 @@ module.exports = function (args) {
     cb(null, ans)
   }
 
-  var proxyBitcoinD = function (method, params, cb) {
-    bitcoin.cmd(method, params, function (err, ans) {
+  var proxyLitecoinD = function (method, params, cb) {
+    litecoin.cmd(method, params, function (err, ans) {
       if (err) return cb(err)
       injectColoredUtxos(method, params, ans, cb)
     })
@@ -811,7 +811,7 @@ module.exports = function (args) {
     getAddressesTransactions: getAddressesTransactions,
     transmit: transmit,
     getInfo: getInfo,
-    proxyBitcoinD: proxyBitcoinD,
+    proxyLitecoinD: proxyLitecoinD,
     emitter: emitter
   }
 }
