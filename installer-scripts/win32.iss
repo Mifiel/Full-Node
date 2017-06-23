@@ -32,13 +32,13 @@ AlwaysShowDirOnReadyPage=yes
 DisableDirPage=no
 
 [Types]
-Name: "full"; Description: "Full installation, including bitcoind and redis. (recommended)"
-Name: "compact"; Description: "Compact installation, needs bitcoind and redis installed manually on the machine."
+Name: "full"; Description: "Full installation, including litecoind and redis. (recommended)"
+Name: "compact"; Description: "Compact installation, needs litecoind and redis installed manually on the machine."
 Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 [Components]
 Name: "coloredcoins_full_node"; Description: "ColoredCoins Full Node module."; Types: full compact custom; Flags: fixed
-Name: "bitcoin_core"; Description: "Bitcoin core client. You do not have to install it if it is already installed on your machine."; Types: full; ExtraDiskSpaceRequired: 160456270630
+Name: "litecoin_core"; Description: "Litecoin core client. You do not have to install it if it is already installed on your machine."; Types: full; ExtraDiskSpaceRequired: 160456270630
 Name: "redis"; Description: "Redis db service. You do not have to install it if it is already installed on your machine."; Types: full; ExtraDiskSpaceRequired: 209715200
 
 [Languages]
@@ -51,7 +51,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "coloredcoins-full-node.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\..\properties.conf"; DestDir: "{userappdata}\coloredcoins-full-node"; Flags: onlyifdoesntexist
-Source: "..\..\dependencies\{#Bitcoin32}"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "..\..\dependencies\{#Litecoin32}"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "..\..\dependencies\{#Redis32}"; DestDir: "{tmp}"; Flags: deleteafterinstall
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
@@ -61,6 +61,6 @@ Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: 
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent unchecked
-Filename: "{tmp}\{#Bitcoin32}"; Components: bitcoin_core
+Filename: "{tmp}\{#Litecoin32}"; Components: litecoin_core
 Filename: "{tmp}\{#Redis32}"; Components: redis
 

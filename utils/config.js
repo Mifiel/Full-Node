@@ -8,104 +8,104 @@ var tryPopulateBitcoinConfAuto = function (properties) {
   var bitcoindConfPath = process.platform === 'linux' ? path.join(ospath.home(), '.bitcoin', 'bitcoin.conf') : path.join(ospath.data(), 'Bitcoin', 'bitcoin.conf')
   var bitcoindProperties
   try {
-    bitcoindProperties = ini.parseSync(bitcoindConfPath)
-  } catch (e) { 
-    console.warn('Can\'t find bitcoind properties file for auto config:', bitcoindConfPath)
+    litecoindProperties = ini.parseSync(litecoindConfPath)
+  } catch (e) {
+    console.warn('Can\'t find litecoind properties file for auto config:', litecoindConfPath)
     return false
   }
-  if (!bitcoindProperties) return false
-  // console.log('bitcoindProperties', bitcoindProperties)
-  // properties.network = (bitcoindProperties.testnet === '1' || bitcoindProperties === 'true') ? 'testnet' : 'mainnet'
-  properties.bitcoinHost = 'localhost'
-  properties.bitcoinPort = bitcoindProperties.rpcport || (properties.network === 'testnet' ? '18332' : '8332')
-  properties.bitcoinUser = bitcoindProperties.rpcuser || 'rpcuser'
-  properties.bitcoinPass = bitcoindProperties.rpcpassword || 'rpcpass'
-  properties.bitcoinPath = '/'
-  properties.bitcoinTimeout = parseInt(bitcoindProperties.rpctimeout || '30', 10) * 1000
+  if (!litecoindProperties) return false
+
+  // properties.network = (litecoindProperties.testnet === '1' || litecoindProperties === 'true') ? 'testnet' : 'mainnet'
+  properties.litecoinHost = properties.litecoinHost || 'localhost'
+  properties.litecoinPort = litecoindProperties.rpcport || (properties.network === 'testnet' ? '18332' : '8332')
+  properties.litecoinUser = litecoindProperties.rpcuser || 'rpcuser'
+  properties.litecoinPass = litecoindProperties.rpcpassword || 'rpcpass'
+  properties.litecoinPath = '/'
+  properties.litecoinTimeout = parseInt(litecoindProperties.rpctimeout || '30', 10) * 1000
 }
 
-var tryRunBitcoindWin32 = function (properties) {
-  var cwd = properties.bitcoindExecutableDir || process.env.BITCOIND_EXECUTABLE_DIR || 'C:\\Program Files\\Bitcoin\\daemon\\'
-  var command = 'bitcoind.exe'
+var tryRunLitecoindWin32 = function (properties) {
+  var cwd = properties.litecoindExecutableDir || process.env.LITECOIND_EXECUTABLE_DIR || 'C:\\Program Files\\Litecoin\\daemon\\'
+  var command = 'litecoind.exe'
   var args = ['--server', '--txindex']
   if (properties.network === 'testnet') {
     args.push('--testnet')
   }
-  if (properties.bitcoindAutoConf && !properties.bitcoindAutoConfSuccess) {
-    // could not pull bitcoin properties (bitcoin.conf) to self properties - run bitcoin RPC server with defaults
-    args.push('-rpcuser=' + properties.bitcoinUser)
-    args.push('-rpcpassword=' + properties.bitcoinPass)
-    args.push('-rpcport=' + properties.bitcoinPort)
+  if (properties.litecoindAutoConf && !properties.litecoindAutoConfSuccess) {
+    // could not pull litecoin properties (litecoin.conf) to self properties - run litecoin RPC server with defaults
+    args.push('-rpcuser=' + properties.litecoinUser)
+    args.push('-rpcpassword=' + properties.litecoinPass)
+    args.push('-rpcport=' + properties.litecoinPort)
   }
   var spawn = cp.spawn
-  var bitcoind = spawn(command, args, {cwd: cwd})
+  var litecoind = spawn(command, args, {cwd: cwd})
 
-  // bitcoind.stdout.on('data', function (data) {
-  //   console.log('bitcoind:', data.toString())
+  // litecoind.stdout.on('data', function (data) {
+  //   console.log('litecoind:', data.toString())
   // })
 
-  bitcoind.stderr.on('data', function (data) {
-    console.error('bitcoind error:', data.toString())
+  litecoind.stderr.on('data', function (data) {
+    console.error('litecoind error:', data.toString())
   })
 
-  bitcoind.on('close', function (code) {
+  litecoind.on('close', function (code) {
     if (code == 0 || code == 2) return
-    console.error('bitcoind closed with code,', code)
+    console.error('litecoind closed with code,', code)
   })
 
-  bitcoind.on('error', function (code) {
+  litecoind.on('error', function (code) {
     if (code == 0 || code == 2) return
-    console.error('bitcoind exited with error code,', code)
+    console.error('litecoind exited with error code,', code)
   })
 
   return true
 }
 
-var tryRunBitcoindMac, tryRunBitcoindLinux
-tryRunBitcoindMac = tryRunBitcoindLinux = function (properties) {
-  var command = 'bitcoind'
+var tryRunLitecoindMac, tryRunLitecoindLinux
+tryRunLitecoindMac = tryRunLitecoindLinux = function (properties) {
+  var command = 'litecoind'
   var args = ['--server', '--txindex']
   if (properties.network === 'testnet') {
     args.push('--testnet')
   }
-  if (properties.bitcoindAutoConf && !properties.bitcoindAutoConfSuccess) {
-    // could not pull bitcoin properties (bitcoin.conf) to self properties - run bitcoin RPC server with defaults
-    args.push('-rpcuser=' + properties.bitcoinUser)
-    args.push('-rpcpassword=' + properties.bitcoinPass)
-    args.push('-rpcport=' + properties.bitcoinPort)
+  if (properties.litecoindAutoConf && !properties.litecoindAutoConfSuccess) {
+    // could not pull litecoin properties (litecoin.conf) to self properties - run litecoin RPC server with defaults
+    args.push('-rpcuser=' + properties.litecoinUser)
+    args.push('-rpcpassword=' + properties.litecoinPass)
+    args.push('-rpcport=' + properties.litecoinPort)
   }
   var spawn = cp.spawn
-  var bitcoind = spawn(command, args)
+  var litecoind = spawn(command, args)
 
-  // bitcoind.stdout.on('data', function (data) {
-  //   console.log('bitcoind:', data.toString())
+  // litecoind.stdout.on('data', function (data) {
+  //   console.log('litecoind:', data.toString())
   // })
 
-  bitcoind.stderr.on('data', function (data) {
-    console.error('bitcoind error:', data.toString())
+  litecoind.stderr.on('data', function (data) {
+    console.error('litecoind error:', data.toString())
   })
 
-  bitcoind.on('close', function (code) {
+  litecoind.on('close', function (code) {
     if (code == 0 || code == 2) return
-    console.error('bitcoind closed with code,', code)
+    console.error('litecoind closed with code,', code)
   })
 
-  bitcoind.on('error', function (code) {
+  litecoind.on('error', function (code) {
     if (code == 0 || code == 2) return
-    console.error('bitcoind exited with error code,', code)
+    console.error('litecoind exited with error code,', code)
   })
 
   return true
 }
 
-var tryRunBitcoind = function (properties) {
+var tryRunLitecoind = function (properties) {
   switch (this.__platform || process.platform) {
-    case 'win32': 
-      return tryRunBitcoindWin32(properties)
-    case 'darwin': 
-      return tryRunBitcoindMac(properties)
-    default: 
-      return tryRunBitcoindLinux(properties)
+    case 'win32':
+      return tryRunLitecoindWin32(properties)
+    case 'darwin':
+      return tryRunLitecoindMac(properties)
+    default:
+      return tryRunLitecoindLinux(properties)
   }
 }
 
@@ -161,11 +161,11 @@ tryRunRedisMac = tryRunRedisLinux = function (properties) {
 
 var tryRunRedis = function (properties) {
   switch (this.__platform || process.platform) {
-    case 'win32': 
+    case 'win32':
       return tryRunRedisWin32(properties)
-    case 'darwin': 
+    case 'darwin':
       return tryRunRedisMac(properties)
-    default: 
+    default:
       return tryRunRedisLinux(properties)
   }
 }
@@ -193,29 +193,29 @@ module.exports = function (propertiesFile) {
   properties.redisPort = properties.redisPort || process.env.REDIS_PORT || '6379'
   properties.redisPassword = properties.redisPassword || process.env.REDIS_PASSWORD
 
-  properties.bitcoindAutoConf = (properties.bitcoindAutoConf || process.env.BITCOIND_AUTO_CONF === 'true')
+  properties.litecoindAutoConf = (properties.litecoindAutoConf || process.env.LITECOIND_AUTO_CONF === 'true')
 
-  var bitcoindAutoConfSuccess = false
-  if (properties.bitcoindAutoConf) {
-    bitcoindAutoConfSuccess = tryPopulateBitcoinConfAuto(properties)
+  var litecoindAutoConfSuccess = false
+  if (properties.litecoindAutoConf) {
+    litecoindAutoConfSuccess = tryPopulateLitecoinConfAuto(properties)
   }
 
-  if (!bitcoindAutoConfSuccess) {
+  if (!litecoindAutoConfSuccess) {
     properties.network = properties.network || process.env.NETWORK || 'testnet'
-    properties.bitcoinHost = properties.bitcoinHost || process.env.BITCOIND_HOST || 'localhost'
-    properties.bitcoinPort = properties.bitcoinPort || process.env.BITCOIND_PORT || '18332'
-    properties.bitcoinUser = properties.bitcoinUser || process.env.BITCOIND_USER || 'rpcuser'
-    properties.bitcoinPass = properties.bitcoinPass || process.env.BITCOIND_PASS || 'rpcpass'
-    properties.bitcoinPath = properties.bitcoinPath || process.env.BITCOIND_PATH || '/'
-    properties.bitcoinTimeout = parseInt(properties.bitcoinTimeout || process.env.BITCOIND_TIMEOUT || 30000, 10)
+    properties.litecoinHost = properties.litecoinHost || process.env.LITECOIND_HOST || 'localhost'
+    properties.litecoinPort = properties.litecoinPort || process.env.LITECOIND_PORT || '18332'
+    properties.litecoinUser = properties.litecoinUser || process.env.LITECOIND_USER || 'rpcuser'
+    properties.litecoinPass = properties.litecoinPass || process.env.LITECOIND_PASS || 'rpcpass'
+    properties.litecoinPath = properties.litecoinPath || process.env.LITECOIND_PATH || '/'
+    properties.litecoinTimeout = parseInt(properties.litecoinTimeout || process.env.LITECOIND_TIMEOUT || 30000, 10)
   }
 
-  properties.bitcoindAutoRun = (properties.bitcoindAutoRun || process.env.BITCOIND_AUTO_RUN === 'true')
+  properties.litecoindAutoRun = (properties.litecoindAutoRun === 'true' || process.env.LITECOIND_AUTO_RUN === 'true')
 
-  if (properties.bitcoindAutoRun) {
-    tryRunBitcoind(properties)
+  if (properties.litecoindAutoRun) {
+    tryRunLitecoind(properties)
   }
-  properties.redisAutoRun = (properties.redisAutoRun || process.env.BITCOIND_AUTO_RUN === 'true')
+  properties.redisAutoRun = (properties.redisAutoRun === 'true' || process.env.LITECOIND_AUTO_RUN === 'true')
 
   if (properties.redisAutoRun) {
     tryRunRedis(properties)

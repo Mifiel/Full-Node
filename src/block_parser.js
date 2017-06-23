@@ -23,7 +23,7 @@ var label = 'cc-full-node'
 module.exports = function (args) {
   args = args || {}
   var network = args.network || 'testnet'
-  var bitcoinNetwork = (network === 'mainnet') ? bitcoinjs.networks.bitcoin : bitcoinjs.networks.testnet
+  var litecoinNetwork = (network === 'mainnet') ? bitcoinjs.networks.litecoin : bitcoinjs.networks.testnet
   var redisOptions = {
     host: args.redisHost || 'localhost',
     port: args.redisPort || '6379',
@@ -31,24 +31,24 @@ module.exports = function (args) {
   }
   var redis = redisClient.createClient(redisOptions)
 
-  var bitcoinOptions = {
-    host: args.bitcoinHost || 'localhost',
-    port: args.bitcoinPort || '18332',
-    user: args.bitcoinUser || 'rpcuser',
-    pass: args.bitcoinPass || 'rpcpass',
-    path: args.bitcoinPath || '/',
-    timeout: args.bitcoinTimeout || 30000
+  var litecoinOptions = {
+    host: args.litecoinHost || 'localhost',
+    port: args.litecoinPort || '19332',
+    user: args.litecoinUser || 'rpcuser',
+    pass: args.litecoinPass || 'rpcpass',
+    path: args.litecoinPath || '/',
+    timeout: args.litecoinTimeout || 30000
   }
   var bitcoin = new bitcoinRpc.Client(bitcoinOptions)
 
   var emitter = new events.EventEmitter()
 
   var info = {
-    bitcoindbusy: true
+    litecoindbusy: true
   }
 
-  var waitForBitcoind = function (cb) {
-    if (!info.bitcoindbusy) return cb()
+  var waitForLitecoind = function (cb) {
+    if (!info.litecoindbusy) return cb()
     return setTimeout(function() {
       console.log('Waiting for bitcoind...')
       bitcoin.cmd('getinfo', [], function (err) {
@@ -63,10 +63,10 @@ module.exports = function (args) {
           if (!err.code && !err.message) {
             info.error = err
           }
-          return waitForBitcoind(cb)
+          return waitForLitecoind(cb)
         }
         delete info.error
-        info.bitcoindbusy = false
+        info.litecoindbusy = false
         cb()
       })
     }, 5000)
@@ -516,7 +516,7 @@ module.exports = function (args) {
   }
 
   var infoPopulate = function (cb) {
-    getBitcoindInfo(function (err, newInfo) {
+    getLitecoindInfo(function (err, newInfo) {
       if (err) return cb(err)
       info = newInfo
       cb()
@@ -525,7 +525,7 @@ module.exports = function (args) {
 
   var parseProcedure = function () {
     async.waterfall([
-      waitForBitcoind,
+      waitForLitecoind,
       infoPopulate,
       getNextBlockHeight,
       getNextBlock,
