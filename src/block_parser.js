@@ -12,6 +12,8 @@ var events = require('events')
 var mainnetFirstColoredBlock = 1227000
 var testnetFirstColoredBlock = 462320
 
+var lastestBlockHeight = 0
+
 var blockStates = {
   NOT_EXISTS: 0,
   GOOD: 1,
@@ -77,6 +79,10 @@ module.exports = function (args) {
       if (err) return cb(err)
       lastBlockHeight = lastBlockHeight || ((network === 'mainnet' ? mainnetFirstColoredBlock : testnetFirstColoredBlock) - 1)
       lastBlockHeight = parseInt(lastBlockHeight)
+      if (lastestBlockHeight < lastBlockHeight) {
+        console.log('processing block', lastBlockHeight)
+        lastestBlockHeight = lastBlockHeight
+      }
       cb(null, lastBlockHeight + 1)
     })
   }

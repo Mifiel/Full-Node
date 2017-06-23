@@ -72,8 +72,12 @@ app.use(function (req, res, next) {
   res.type('txt').send('Not found')
 })
 
+var currentBlock = 0
 parser.parse(function (info) {
-  console.log('info', info)
+  if (info.blocks && currentBlock < info.blocks) {
+    console.log('Current Block', info.blocks)
+    currentBlock = info.blocks
+  }
 })
 
 if (sslCredentials) {
