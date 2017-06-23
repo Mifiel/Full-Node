@@ -4,9 +4,9 @@ var path = require('path-extra')
 var ospath = require('ospath')
 var cp = require('child_process')
 
-var tryPopulateBitcoinConfAuto = function (properties) {
-  var bitcoindConfPath = process.platform === 'linux' ? path.join(ospath.home(), '.bitcoin', 'bitcoin.conf') : path.join(ospath.data(), 'Bitcoin', 'bitcoin.conf')
-  var bitcoindProperties
+var tryPopulateLitecoinConfAuto = function (properties) {
+  var litecoindConfPath = path.join('./', 'data', 'litecoin.conf')
+  var litecoindProperties
   try {
     litecoindProperties = ini.parseSync(litecoindConfPath)
   } catch (e) {
@@ -171,22 +171,12 @@ var tryRunRedis = function (properties) {
 }
 
 module.exports = function (propertiesFile) {
-  var localPropertiesFile = path.join(__dirname ,'/../properties.conf')
-  propertiesFile = propertiesFile || localPropertiesFile
+  propertiesFile = propertiesFile
   var properties = {}
   try {
     properties = ini.parseSync(propertiesFile)
   } catch (e) {
     console.warn('Can\'t find properties file:', propertiesFile)
-    if (propertiesFile !== localPropertiesFile) {
-      console.warn('Trying local properties file...')
-      try {
-        properties = ini.parseSync(localPropertiesFile)
-      }
-      catch (e) {
-        console.warn('Can\'t find local properties file:', localPropertiesFile)
-      }
-    }
   }
 
   properties.redisHost = properties.redisHost || process.env.REDIS_HOST || 'localhost'
